@@ -1,0 +1,25 @@
+# MarkNav - SPA fallback for Apache.
+#
+# Clean URLs (e.g. /marknav/01_the_timeline_and_the_origin) don't correspond
+# to real files on disk, so we rewrite anything that isn't an existing file
+# or directory to index.html and let app.js handle routing.
+#
+# Requires mod_rewrite (enable with: sudo a2enmod rewrite).
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Skip rewriting for real files and directories (so /data/*.md, /style.css,
+  # /app.js, /data/files.json, etc. continue to be served directly).
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else falls back to index.html.
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Make sure .md files are sent as text/markdown (so fetch() gets the raw text).
+<IfModule mod_mime.c>
+  AddType text/markdown .md
+</IfModule>
