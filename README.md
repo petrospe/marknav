@@ -1,23 +1,31 @@
 # MarkNav
 
-MarkNav is a lightweight PHP markdown browser for reading `.md` files from the local `data/` folder. It provides a browsable home page, clean document routes, and GitHub-like markdown styling without needing a database or build step.
+MarkNav is a lightweight, **fully static** markdown browser for reading `.md` files from the local `data/` folder. It serves your markdown files as GitHub-styled HTML pages — no PHP, no database, no build step beyond regenerating a small file manifest.
 
 ## Features
 
-- Automatically lists markdown files from `data/`.
-- Opens each file with an extensionless URL, for example `/01_the_timeline_and_the_origin`.
+- 100% static: just HTML, CSS, JavaScript, and your `.md` files.
+- Renders Markdown to GitHub-flavored HTML in the browser using [marked](https://marked.js.org/) and [DOMPurify](https://github.com/cure53/DOMPurify).
+- Automatic homepage listing of every markdown file in `data/`.
+- Clean URLs such as `/01_the_timeline_and_the_origin` for each document (no `#`).
 - Supports nested folders inside `data/`.
-- Renders common Markdown syntax, including headings, paragraphs, links, images, lists, blockquotes, horizontal rules, tables, inline code, and fenced code blocks.
-- Uses `style.css` for the home page and GitHub-like document styling.
-- Shows available markdown paths on 404 pages to make missing routes easy to debug.
+- Searches both filenames and full document contents (3+ characters).
+- Rewrites in-document `*.md` links so cross-document navigation keeps working.
+- GitHub-style document layout shared with the original CSS.
 
 ## Run Locally
 
-From the MarkNav folder:
+MarkNav is a pure static site, so any HTTP server works. From the project folder:
 
 ```bash
 cd marknav
-php -S localhost:8000
+python3 -m http.server 8000
+```
+
+or
+
+```bash
+npx serve -l 8000 .
 ```
 
 Then open:
@@ -26,6 +34,8 @@ Then open:
 http://localhost:8000
 ```
 
+> **Note:** opening `index.html` directly via `file://` will not work because the browser blocks `fetch()` calls for local files. Use any small HTTP server.
+
 ## Content
 
 Add markdown files to:
@@ -33,6 +43,16 @@ Add markdown files to:
 ```text
 marknav/data/
 ```
+
+After adding, removing, or renaming files, regenerate the manifest:
+
+```bash
+./generate-manifest.sh
+```
+
+This rewrites `data/files.json`, which is the index used by the browser to discover documents (static sites can't list directories).
+
+### URLs
 
 A file named:
 
@@ -58,16 +78,56 @@ is available at:
 http://localhost:8000/notes/example
 ```
 
+### Server requirement for clean URLs
+
+Because URLs like `/example_document` don't correspond to real files on disk, the
+server must fall back to `index.html` for unknown paths so `app.js` can take
+over routing. A ready-made `.htaccess` is included for Apache. Other servers
+need similar config:
+
+**Apache** — already handled by the bundled `.htaccess` (needs `mod_rewrite`
+and `AllowOverride All` on the directory).
+
+**Nginx**:
+
+```nginx
+location /marknav/ {
+  try_files $uri $uri/ /marknav/index.html;
+}
+```
+
+**Python http.server / `npx serve`** — these don't have rewrite support, so
+deep links won't survive a refresh. Navigating from the homepage works, but
+typing `http://localhost:8000/example_document` directly will 404. Fine for
+development; use a real server (Apache/Nginx/Caddy) in production.
+
+**GitHub Pages** — copy `index.html` to `404.html` so unknown paths fall back
+to the SPA.
+
 ## Project Structure
 
 ```text
 marknav/
-├── data/       # Markdown content
-├── index.php   # Router, home page, and Markdown renderer
-├── style.css   # Home page and GitHub-like document styles
-└── README.md   # Project documentation
+├── data/                    # Markdown content
+│   └── files.json           # Auto-generated manifest of .md files
+├── index.html               # Single-page entry (home + document viewer)
+├── app.js                   # Router, manifest loader, markdown rendering
+├── style.css                # Home page + GitHub-like document styles
+├── .htaccess                # Apache SPA fallback (clean URLs)
+├── generate-manifest.sh     # Helper: rebuild data/files.json
+└── README.md                # Project documentation
 ```
+
+## How it Works
+
+1. The browser loads `index.html`, which pulls in `marked.js` and `DOMPurify` from a CDN.
+2. `app.js` fetches `data/files.json` to learn what documents exist.
+3. The URL path decides what to render (via the History API):
+   - `/` → homepage grid with search.
+   - `/<path>` → fetches `data/<path>.md`, converts to HTML, sanitizes, and displays it with GitHub-style theming.
+4. Cross-document links written as `[other doc](other_doc.md)` are rewritten on the fly so they navigate within the SPA.
+5. Clicks on internal links are intercepted and pushed to the History API, so the URL stays clean and refreshes still land on the right document (with the SPA fallback configured server-side).
 
 ## Notes
 
-MarkNav is intentionally small and self-contained. It does not aim to be a full GitHub Markdown implementation, but it renders the most common Markdown patterns in a similar visual style for local browsing.
+MarkNav is intentionally small and self-contained. It does not aim to be a full GitHub Markdown implementation, but `marked` covers the vast majority of common Markdown syntax including tables, fenced code blocks, task lists, and inline HTML (sanitized).

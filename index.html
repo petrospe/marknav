@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarkNav - Document Browser</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- KaTeX renders LaTeX math expressions ($...$ and $$...$$). -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E">
+  <!-- marked.js renders Markdown to HTML in the browser, GitHub-flavored. -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js" defer></script>
+  <!-- DOMPurify sanitizes the rendered HTML to prevent XSS. -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <!-- Homepage view: file listing, search, hero header. -->
+  <main id="view-home" class="marknav-home" hidden>
+    <div class="container">
+      <div class="header">
+        <h1>📚 MarkNav</h1>
+        <div class="subtitle">Your Markdown Document Browser</div>
+        <div class="stats" id="stats-pill">📄 0 documents available</div>
+      </div>
+
+      <div class="search-container">
+        <div class="search-box">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="🔍 Search documents by name or content (3+ chars)..."
+            autocomplete="off"
+          >
+        </div>
+      </div>
+
+      <section id="home-content"></section>
+
+      <div class="footer">
+        <p>✨ MarkNav · A static markdown browser</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Document view: renders a single .md file as HTML. -->
+  <main id="view-document" class="marknav-document" hidden>
+    <header class="document-header">
+      <div class="document-header-main">
+        <a href="./" class="document-brand" data-home-link>
+          <span class="document-brand-icon">📚</span>
+          <span><strong>MarkNav</strong><small>Markdown Browser</small></span>
+        </a>
+        <span class="document-count" id="document-count">0 documents</span>
+      </div>
+      <nav class="document-nav" aria-label="Documents">
+        <a href="./" class="document-nav-link document-nav-home" data-home-link>Home</a>
+        <span class="document-nav-link is-active" id="document-active-title">Document</span>
+        <details class="document-pages-menu">
+          <summary>Pages</summary>
+          <div class="document-pages-dropdown" id="document-pages-dropdown"></div>
+        </details>
+      </nav>
+    </header>
+
+    <div class="markdown-content" id="markdown-content"></div>
+
+    <footer class="document-footer">
+      <p>✨ MarkNav · Browse your markdown files with style</p>
+      <a href="./" data-home-link>← Back to library</a>
+    </footer>
+  </main>
+
+  <!-- 404 view: shown when a doc cannot be located. -->
+  <main id="view-404" class="marknav-document" hidden>
+    <header class="document-header">
+      <div class="document-header-main">
+        <a href="./" class="document-brand" data-home-link>
+          <span class="document-brand-icon">📚</span>
+          <span><strong>MarkNav</strong><small>Markdown Browser</small></span>
+        </a>
+      </div>
+    </header>
+    <div class="markdown-content">
+      <h1>404 — Document not found</h1>
+      <p id="not-found-message">The requested markdown file could not be located.</p>
+      <p><strong>Available documents:</strong></p>
+      <ul id="not-found-list"></ul>
+      <p><a href="./" data-home-link>← Back to home</a></p>
+    </div>
+  </main>
+</body>
+</html>
