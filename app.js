@@ -32,6 +32,8 @@
 
   const DATA_DIR = BASE_PATH + 'data/';
   const MANIFEST_URL = DATA_DIR + 'files.json';
+  const IMAGES_DIR = BASE_PATH + 'images/';
+  const IMAGES_MANIFEST_URL = IMAGES_DIR + 'files.json';
 
   const FOLDER_ICONS = {
     courses: '📚',
@@ -51,9 +53,11 @@
     documents: [],
     rootDocs: [],
     foldered: {},
+    images: [],
     contentCache: new Map(),
     contentLoading: new Map(),
     searchIndexLoaded: false,
+    lightbox: { open: false, index: 0 },
   };
 
   document.addEventListener('DOMContentLoaded', init);
@@ -72,9 +76,15 @@
       return;
     }
 
+    // Images are optional — missing images/files.json should not break the app.
+    await loadImagesManifest().catch((err) => {
+      console.warn('[marknav] images manifest not loaded:', err);
+    });
+
     setupSearch();
     setupNavigation();
     setupHomeLinks();
+    setupLightbox();
 
     // If we landed here via the legacy "#/" hash, upgrade it to a clean URL.
     if (window.location.hash.startsWith('#/')) {
@@ -155,6 +165,38 @@
     };
   }
 
+  async function loadImagesManifest() {
+    const res = await fetch(IMAGES_MANIFEST_URL, { cache: 'no-cache' });
+    if (!res.ok) {
+      // Not fatal — gallery is optional.
+      state.images = [];
+      return;
+    }
+    const data = await res.json();
+    const files = Array.isArray(data.files) ? data.files : [];
+    state.images = files
+      .filter((f) => typeof f === 'string' && /\.(png|jpe?g|gif|webp|svg|avif)$/i.test(f))
+      .map(normalizeImageEntry)
+      .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+  }
+
+  function normalizeImageEntry(filePath) {
+    const cleaned = filePath.replace(/^\.\//, '');
+    const parts = cleaned.split('/');
+    const fileName = parts.pop();
+    const baseName = fileName.replace(/\.[^.]+$/, '');
+    const display = baseName.replace(/[_-]+/g, ' ');
+    const url = IMAGES_DIR + encodePath(cleaned);
+
+    return {
+      relativePath: cleaned,
+      fileName,
+      baseName,
+      display,
+      url,
+    };
+  }
+
   function buildHref(urlPath) {
     if (!urlPath) return BASE_PATH;
     return BASE_PATH + encodePath(urlPath);
@@ -231,6 +273,7 @@
       document.getElementById(id).hidden = id !== viewId;
     });
     document.body.classList.toggle('body-home', viewId === 'view-home');
+    if (state.lightbox.open) closeLightbox();
     window.scrollTo({ top: 0 });
   }
 
@@ -247,12 +290,12 @@
     const container = document.getElementById('home-content');
     container.innerHTML = '';
 
-    if (state.documents.length === 0) {
+    if (state.documents.length === 0 && state.images.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
           <div class="emoji">📭</div>
-          <h3>No markdown files found</h3>
-          <p>Add some <code>.md</code> files to the <code>data/</code> folder and run <code>./generate-manifest.sh</code>.</p>
+          <h3>Nothing to show yet</h3>
+          <p>Add <code>.md</code> files to <code>data/</code> or images to <code>images/</code>, then run <code>./generate-manifest.sh</code>.</p>
         </div>`;
       return;
     }
@@ -288,6 +331,40 @@
         section.appendChild(grid);
         container.appendChild(section);
       });
+
+    if (state.images.length) {
+      const section = document.createElement('section');
+      section.className = 'gallery-section';
+      section.innerHTML = `<h2 class="section-title">🖼️ Gallery</h2>`;
+      const grid = document.createElement('div');
+      grid.className = 'gallery-grid';
+      state.images.forEach((img, index) => {
+        grid.appendChild(buildImageCard(img, index));
+      });
+      section.appendChild(grid);
+      container.appendChild(section);
+    }
+  }
+
+  function buildImageCard(img, index) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'gallery-card';
+    card.dataset.imageIndex = String(index);
+    card.dataset.searchBase = normalizeForSearch(
+      `${img.baseName} ${img.relativePath} ${img.display}`
+    );
+    card.setAttribute('aria-label', `Open ${img.display}`);
+    card.innerHTML = `
+      <div class="gallery-thumb">
+        <img src="${escapeHtml(img.url)}" alt="${escapeHtml(img.display)}" loading="lazy" decoding="async">
+      </div>
+      <div class="gallery-caption">
+        <div class="gallery-name">${escapeHtml(img.display)}</div>
+        <div class="gallery-path">${escapeHtml(img.relativePath)}</div>
+      </div>`;
+    card.addEventListener('click', () => openLightbox(index));
+    return card;
   }
 
   function buildCard(doc, icon) {
@@ -341,6 +418,100 @@
       const visible = section.querySelectorAll('.file-card:not([style*="display: none"])');
       section.style.display = visible.length ? '' : 'none';
     });
+
+    // Gallery cards
+    document.querySelectorAll('#view-home .gallery-card').forEach((card) => {
+      const baseText = card.dataset.searchBase || '';
+      const matches = !shouldFilter || baseText.includes(term);
+      card.style.display = matches ? '' : 'none';
+    });
+    document.querySelectorAll('#view-home .gallery-section').forEach((section) => {
+      const visible = section.querySelectorAll('.gallery-card:not([style*="display: none"])');
+      section.style.display = visible.length ? '' : 'none';
+    });
+  }
+
+  function setupLightbox() {
+    if (document.getElementById('lightbox')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'lightbox';
+    overlay.className = 'lightbox';
+    overlay.hidden = true;
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', 'Image viewer');
+    overlay.innerHTML = `
+      <button type="button" class="lightbox-close" aria-label="Close">×</button>
+      <button type="button" class="lightbox-nav lightbox-prev" aria-label="Previous image">‹</button>
+      <div class="lightbox-stage">
+        <img class="lightbox-image" alt="">
+        <div class="lightbox-caption"></div>
+      </div>
+      <button type="button" class="lightbox-nav lightbox-next" aria-label="Next image">›</button>`;
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', (event) => {
+      // Click on backdrop (not the image/buttons) closes.
+      if (event.target === overlay || event.target.classList.contains('lightbox-stage')) {
+        closeLightbox();
+      }
+    });
+    overlay.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
+    overlay.querySelector('.lightbox-prev').addEventListener('click', () => stepLightbox(-1));
+    overlay.querySelector('.lightbox-next').addEventListener('click', () => stepLightbox(1));
+
+    document.addEventListener('keydown', (event) => {
+      if (!state.lightbox.open) return;
+      if (event.key === 'Escape') closeLightbox();
+      else if (event.key === 'ArrowLeft') stepLightbox(-1);
+      else if (event.key === 'ArrowRight') stepLightbox(1);
+    });
+  }
+
+  function openLightbox(index) {
+    if (!state.images.length) return;
+    state.lightbox.open = true;
+    state.lightbox.index = clampIndex(index);
+    renderLightbox();
+    const overlay = document.getElementById('lightbox');
+    overlay.hidden = false;
+    document.body.classList.add('lightbox-open');
+  }
+
+  function closeLightbox() {
+    state.lightbox.open = false;
+    const overlay = document.getElementById('lightbox');
+    if (overlay) overlay.hidden = true;
+    document.body.classList.remove('lightbox-open');
+  }
+
+  function stepLightbox(delta) {
+    if (!state.images.length) return;
+    state.lightbox.index = clampIndex(state.lightbox.index + delta);
+    renderLightbox();
+  }
+
+  function clampIndex(index) {
+    const n = state.images.length;
+    if (!n) return 0;
+    return ((index % n) + n) % n;
+  }
+
+  function renderLightbox() {
+    const overlay = document.getElementById('lightbox');
+    if (!overlay) return;
+    const img = state.images[state.lightbox.index];
+    const imgEl = overlay.querySelector('.lightbox-image');
+    const cap = overlay.querySelector('.lightbox-caption');
+    imgEl.src = img.url;
+    imgEl.alt = img.display;
+    const counter = state.images.length > 1
+      ? `<span class="lightbox-counter">${state.lightbox.index + 1} / ${state.images.length}</span>`
+      : '';
+    cap.innerHTML = `<strong>${escapeHtml(img.display)}</strong> <span class="lightbox-path">${escapeHtml(img.relativePath)}</span>${counter}`;
+    const multi = state.images.length > 1;
+    overlay.querySelector('.lightbox-prev').style.display = multi ? '' : 'none';
+    overlay.querySelector('.lightbox-next').style.display = multi ? '' : 'none';
   }
 
   async function preloadAllContents() {

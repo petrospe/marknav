@@ -9,8 +9,10 @@ MarkNav is a lightweight, **fully static** markdown browser for reading `.md` fi
 - Automatic homepage listing of every markdown file in `data/`.
 - Clean URLs such as `/01_the_timeline_and_the_origin` for each document (no `#`).
 - Supports nested folders inside `data/`.
-- Searches both filenames and full document contents (3+ characters).
+- Searches both filenames and full document contents (3+ characters), with Unicode-aware accent folding (Greek/Latin diacritics ignored).
 - Rewrites in-document `*.md` links so cross-document navigation keeps working.
+- LaTeX math rendering via [KaTeX](https://katex.org/) for both inline (`$…$`) and block (`$$…$$`) expressions.
+- Drop-in **image gallery**: any image placed in `images/` shows up as a card on the homepage and opens in a built-in lightbox (keyboard arrows + Escape supported).
 - GitHub-style document layout shared with the original CSS.
 
 ## Run Locally
@@ -44,13 +46,29 @@ Add markdown files to:
 marknav/data/
 ```
 
-After adding, removing, or renaming files, regenerate the manifest:
+After adding, removing, or renaming files, regenerate the manifests:
 
 ```bash
 ./generate-manifest.sh
 ```
 
-This rewrites `data/files.json`, which is the index used by the browser to discover documents (static sites can't list directories).
+This rewrites `data/files.json` and `images/files.json`, which are the indexes used by the browser to discover documents and gallery images (static sites can't list directories).
+
+### Images / gallery
+
+Drop image files into:
+
+```text
+marknav/images/
+```
+
+Supported formats: `.png`, `.jpg` / `.jpeg`, `.gif`, `.webp`, `.svg`, `.avif`.
+
+After adding files, run `./generate-manifest.sh` to refresh the gallery manifest. The new images will appear as a gallery section at the bottom of the homepage. Clicking a thumbnail opens a lightbox with:
+
+- Keyboard arrows (`←` / `→`) to flip between images
+- `Esc` or click on the backdrop to close
+- Counter showing position (e.g. `2 / 7`)
 
 ### URLs
 
@@ -110,11 +128,13 @@ to the SPA.
 marknav/
 ├── data/                    # Markdown content
 │   └── files.json           # Auto-generated manifest of .md files
+├── images/                  # Gallery images
+│   └── files.json           # Auto-generated manifest of image files
 ├── index.html               # Single-page entry (home + document viewer)
-├── app.js                   # Router, manifest loader, markdown rendering
-├── style.css                # Home page + GitHub-like document styles
+├── app.js                   # Router, manifest loader, markdown rendering, gallery
+├── style.css                # Home page + GitHub-like document + gallery styles
 ├── .htaccess                # Apache SPA fallback (clean URLs)
-├── generate-manifest.sh     # Helper: rebuild data/files.json
+├── generate-manifest.sh     # Helper: rebuild both files.json manifests
 └── README.md                # Project documentation
 ```
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Regenerate data/files.json by scanning the data/ folder for .md files.
-# Run this whenever you add, rename, or remove markdown files.
+# Regenerate data/files.json and images/files.json by scanning the
+# respective folders. Run this whenever you add, rename, or remove
+# markdown files or images.
 #
 # Usage:
 #   ./generate-manifest.sh
@@ -8,34 +9,44 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DATA_DIR="$ROOT_DIR/data"
-OUTPUT="$DATA_DIR/files.json"
 
-if [ ! -d "$DATA_DIR" ]; then
-  echo "Error: $DATA_DIR does not exist" >&2
-  exit 1
-fi
+build_manifest() {
+  local dir="$1"        # absolute path to the folder being scanned
+  local pattern="$2"    # find -name pattern (e.g. '*.md' or expression)
+  local label="$3"      # human label for the output line
+  local output="$dir/files.json"
 
-mapfile -t MD_FILES < <(cd "$DATA_DIR" && find . -type f -name '*.md' \
-  ! -name 'files.json' \
-  | sed 's|^\./||' \
-  | sort)
+  if [ ! -d "$dir" ]; then
+    echo "Skipping $label: $dir does not exist" >&2
+    return 0
+  fi
 
-{
-  echo "{"
-  echo "  \"generatedAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
-  echo "  \"files\": ["
-  total=${#MD_FILES[@]}
-  for i in "${!MD_FILES[@]}"; do
-    file="${MD_FILES[$i]}"
-    if [ "$((i + 1))" -lt "$total" ]; then
-      echo "    \"$file\","
-    else
-      echo "    \"$file\""
-    fi
-  done
-  echo "  ]"
-  echo "}"
-} > "$OUTPUT"
+  # shellcheck disable=SC2086
+  mapfile -t MATCHES < <(cd "$dir" && eval "find . -type f \\( $pattern \\) ! -name 'files.json'" \
+    | sed 's|^\./||' \
+    | sort)
 
-echo "Wrote $OUTPUT (${#MD_FILES[@]} files)"
+  {
+    echo "{"
+    echo "  \"generatedAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+    echo "  \"files\": ["
+    total=${#MATCHES[@]}
+    for i in "${!MATCHES[@]}"; do
+      file="${MATCHES[$i]}"
+      if [ "$((i + 1))" -lt "$total" ]; then
+        echo "    \"$file\","
+      else
+        echo "    \"$file\""
+      fi
+    done
+    echo "  ]"
+    echo "}"
+  } > "$output"
+
+  echo "Wrote $output (${#MATCHES[@]} $label)"
+}
+
+build_manifest "$ROOT_DIR/data" "-name '*.md'" "markdown files"
+build_manifest "$ROOT_DIR/images" \
+  "-iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.gif' -o -iname '*.webp' -o -iname '*.svg' -o -iname '*.avif'" \
+  "images"

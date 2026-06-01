@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="100%" height="100%">
+  <!-- Φόντο: Βαθύ Πορφυρό (Imperial Purple) -->
+  <rect width="900" height="600" fill="#58111A" />
+
+  <!-- Κάθετη Λωρίδα αριστερά: Το Μπλε του Χάλυβα και της Ναυτοσύνης (Steel Blue) -->
+  <rect width="250" height="600" fill="#203A43" />
+  
+  <!-- Χρυσή Διαχωριστική Γραμμή ανάμεσα στα δύο χρώματα -->
+  <rect x="245" y="0" width="10" height="600" fill="#D4AF37" />
+
+  <!-- Κεντρικό Έμβλημα (Μετατοπισμένο ελαφρώς προς το κέντρο της ένωσης) -->
+  <g transform="translate(380, 300)">
+    
+    <!-- 1. Το Βιομηχανικό Γρανάζι (Χρυσό) -->
+    <circle r="110" fill="none" stroke="#D4AF37" stroke-width="14" />
+    <!-- Δόντια Γραναζιού (8 οδόντες) -->
+    <g id="gear-teeth" stroke="#D4AF37" stroke-width="24" stroke-linecap="round">
+      <line x1="0" y1="-125" x2="0" y2="-100" />
+      <line x1="0" y1="100" x2="0" y2="125" />
+      <line x1="-125" y1="0" x2="-100" y2="0" />
+      <line x1="100" y1="0" x2="125" y2="0" />
+      <line x1="-88" y1="-88" x2="-71" y2="-71" />
+      <line x1="71" y1="71" x2="88" y2="88" />
+      <line x1="71" y1="-71" x2="88" y2="-88" />
+      <line x1="-88" y1="71" x2="-71" y2="71" />
+    </g>
+
+    <!-- 2. Το Ρωμαϊκό Στεφάνι Δάφνης (Αγκαλιάζει το γρανάζι εξωτερικά) -->
+    <path d="M -150,0 A 150,150 0 0,1 0,-150" fill="none" stroke="#D4AF37" stroke-width="6" stroke-dasharray="10 15" stroke-linecap="round" />
+    <path d="M -150,0 A 150,150 0 0,0 0,150" fill="none" stroke="#D4AF37" stroke-width="6" stroke-dasharray="10 15" stroke-linecap="round" />
+    <path d="M 150,0 A 150,150 0 0,0 0,-150" fill="none" stroke="#D4AF37" stroke-width="6" stroke-dasharray="10 15" stroke-linecap="round" />
+    <path d="M 150,0 A 150,150 0 0,1 0,150" fill="none" stroke="#D4AF37" stroke-width="6" stroke-dasharray="10 15" stroke-linecap="round" />
+
+    <!-- 3. Τα Αστέρια των Ομόσπονδων Κρατών (Κύκλος από 12 χρυσά αστέρια στο κέντρο) -->
+    <g id="stars" fill="#D4AF37">
+      <!-- Ενδεικτικά 4 κεντρικά αστέρια σε σταυρό, ο κώδικας δημιουργεί την αίσθηση του κύκλου -->
+      <polygon points="0,-65 5,-50 20,-50 10,-40 15,-25 0,-35 -15,-25 -10,-40 -20,-50 -5,-50" />
+      <polygon points="0,35 5,50 20,50 10,60 15,75 0,65 -15,75 -10,60 -20,50 -5,50" transform="rotate(180)" />
+      <polygon points="50,-15 55,0 70,0 60,10 65,25 50,15 35,25 40,10 30,0 45,0" transform="rotate(90)" />
+      <polygon points="50,-15 55,0 70,0 60,10 65,25 50,15 35,25 40,10 30,0 45,0" transform="rotate(-90)" />
+      <polygon points="40,-40 45,-25 60,-25 50,-15 55,0 40,-10 25,0 30,-15 20,-25 35,-25" transform="rotate(45)" />
+      <polygon points="40,-40 45,-25 60,-25 50,-15 55,0 40,-10 25,0 30,-15 20,-25 35,-25" transform="rotate(-45)" />
+      <polygon points="40,-40 45,-25 60,-25 50,-15 55,0 40,-10 25,0 30,-15 20,-25 35,-25" transform="rotate(135)" />
+      <polygon points="40,-40 45,-25 60,-25 50,-15 55,0 40,-10 25,0 30,-15 20,-25 35,-25" transform="rotate(-135)" />
+    </g>
+
+    <!-- 4. Το ιστορικό ακρωνύμιο S.P.Q.R. στο κέντρο -->
+    <text x="0" y="12" font-family="'Times New Roman', Times, serif" font-size="32" font-weight="bold" fill="#D4AF37" text-anchor="middle" letter-spacing="4">SPQR</text>
+  </g>
+</svg>
